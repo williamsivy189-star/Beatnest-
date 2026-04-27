@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 1. Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // 2. Entity Validators
+    function isValidUser(data) {
+      return data.keys().hasAll(['displayName', 'isPro']) 
+        && data.keys().size() <= 4
+        && data.displayName is string && data.displayName.size() <= 100
+        && data.isPro is bool
+        && (!data.keys().contains('photoURL') || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && (!data.keys().contains('bio') || (data.bio is string && data.bio.size() <= 500));
+    }
+
+    function isValidProject(data, isCreate) {
+      return data.keys().hasAll(['title', 'ownerId', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().size() >= 5
+        && data.title is string && data.title.size() <= 100
+        && data.ownerId == request.auth.uid
+        && data.status in ['idle', 'recording']
+        && (isCreate ? data.createdAt == request.time : true)
+        && data.updatedAt == request.time
+        && (!data.keys().contains('isPublic') || data.isPublic is bool)
+        && (!data.keys().contains('artistName') || (data.artistName is string && data.artistName.size() <= 100));
+    }
+
+    function isValidTake(data) {
+      return data.keys().hasAll(['projectId', 'ownerId', 'fileName', 'timestamp'])
+        && data.keys().size() <= 5
+        && data.projectId is string && data.projectId.size() <= 128
+        && data.ownerId == request.auth.uid
+        && data.fileName is string && data.fileName.size() <= 200
+        && data.timestamp == request.time
+        && (!data.keys().contains('fileSize') || (data.fileSize is string && data.fileSize.size() <= 20));
+    }
+
+    function isValidMarketplaceItem(data) {
+      return data.keys().hasAll(['title', 'producerName', 'price', 'imageUrl'])
+        && data.title is string && data.title.size() <= 100
+        && data.producerName is string && data.producerName.size() <= 100
+        && data.price is number && data.price >= 0
+        && data.imageUrl is string && data.imageUrl.size() <= 1000;
+    }
+
+    function isValidMerchItem(data) {
+      return data.keys().hasAll(['name', 'artistName', 'price', 'imageUrl'])
+        && data.name is string && data.name.size() <= 100
+        && data.artistName is string && data.artistName.size() <= 100
+        && data.price is number && data.price >= 0
+        && data.imageUrl is string && data.imageUrl.size() <= 1000;
+    }
+
+    function isValidCollabRequest(data) {
+      return data.keys().hasAll(['artistId', 'artistName', 'title', 'genre', 'description', 'timestamp'])
+        && data.artistId == request.auth.uid
+        && data.artistName is string && data.artistName.size() <= 100
+        && data.title is string && data.title.size() <= 100
+        && data.genre is string && data.genre.size() <= 50
+        && data.description is string && data.description.size() <= 1000
+        && data.timestamp == request.time;
+    }
+
+    function isValidChatMessage(data) {
+       return data.keys().hasAll(['userId', 'userName', 'text', 'type', 'timestamp'])
+         && data.userId == request.auth.uid
+         && data.userName is string && data.userName.size() <= 100
+         && data.text is string && data.text.size() <= 500
+         && data.type in ['artist', 'fan']
+         && data.timestamp == request.time;
+    }
+
+    // 3. Collection Rules
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) 
+        || isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if isSignedIn() && (resource.data.ownerId == request.auth.uid || resource.data.isPublic == true || isAdmin());
+      allow create: if isSignedIn() && isValidId(projectId) && isValidProject(incoming(), true);
+      allow update: if (resource.data.ownerId == request.auth.uid || isAdmin()) 
+        && isValidProject(incoming(), false)
+        && incoming().createdAt == resource.data.createdAt
+        && incoming().ownerId == resource.data.ownerId;
+      allow delete: if resource.data.ownerId == request.auth.uid || isAdmin();
+
+      match /takes/{takeId} {
+        allow read: if isSignedIn() && (get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid || get(/databases/$(database)/documents/projects/$(projectId)).data.isPublic == true || isAdmin());
+        allow create: if isSignedIn() && isValidId(takeId) && isValidTake(incoming())
+          && get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid;
+        allow delete: if (resource.data.ownerId == request.auth.uid || isAdmin());
+      }
+    }
+
+    match /marketplace/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin(); // Only admins can manage marketplace for now
+    }
+
+    match /merch/{merchId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /collabRequests/{requestId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(requestId) && isValidCollabRequest(incoming());
+      allow delete: if resource.data.artistId == request.auth.uid || isAdmin();
+    }
+
+    match /liveChats/{chatId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(chatId) && isValidChatMessage(incoming());
+    }
+
+    match /admins/{userId} {
+      allow read: if isOwner(userId);
+    }
+  }
+}

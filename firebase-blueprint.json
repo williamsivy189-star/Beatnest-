@@ -1,0 +1,128 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "isPro": { "type": "boolean" },
+        "bio": { "type": "string" }
+      },
+      "required": ["displayName", "isPro"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "An audio project in the studio.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "artistName": { "type": "string" },
+        "duration": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["idle", "recording"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+       "required": ["title", "ownerId", "status", "createdAt", "updatedAt"]
+    },
+    "Take": {
+      "title": "Take",
+      "description": "A recorded audio take within a project.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileSize": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+       "required": ["projectId", "ownerId", "fileName", "timestamp"]
+    },
+    "MarketplaceItem": {
+       "title": "MarketplaceItem",
+       "description": "A beat or sample for sale.",
+       "type": "object",
+       "properties": {
+         "title": { "type": "string" },
+         "producerName": { "type": "string" },
+         "price": { "type": "number" },
+         "bpm": { "type": "number" },
+         "key": { "type": "string" },
+         "tags": { "type": "array", "items": { "type": "string" } },
+         "imageUrl": { "type": "string" },
+         "licenseType": { "type": "string" }
+       },
+       "required": ["title", "producerName", "price", "imageUrl"]
+    },
+    "MerchItem": {
+       "title": "MerchItem",
+       "description": "Merchandise for sale.",
+       "type": "object",
+       "properties": {
+         "name": { "type": "string" },
+         "artistName": { "type": "string" },
+         "price": { "type": "number" },
+         "imageUrl": { "type": "string" },
+         "soldCount": { "type": "number" },
+         "rating": { "type": "number" },
+         "isVerified": { "type": "boolean" }
+       },
+       "required": ["name", "artistName", "price", "imageUrl"]
+    },
+    "CollabSession": {
+       "title": "CollabSession",
+       "description": "An active collaboration session.",
+       "type": "object",
+       "properties": {
+         "title": { "type": "string" },
+         "ownerId": { "type": "string" },
+         "collaboratorIds": { "type": "array", "items": { "type": "string" } },
+         "status": { "type": "string", "enum": ["live", "idle"] },
+         "location": { "type": "string" }
+       },
+       "required": ["title", "ownerId", "status"]
+    },
+     "CollabRequest": {
+       "title": "CollabRequest",
+       "description": "A request for a collaborator.",
+       "type": "object",
+       "properties": {
+         "artistId": { "type": "string" },
+         "artistName": { "type": "string" },
+         "artistPhoto": { "type": "string" },
+         "title": { "type": "string" },
+         "genre": { "type": "string" },
+         "description": { "type": "string" },
+         "tags": { "type": "array", "items": { "type": "string" } },
+         "timestamp": { "type": "string", "format": "date-time" }
+       },
+       "required": ["artistId", "artistName", "title", "genre", "description", "timestamp"]
+    },
+    "ChatMessage": {
+       "title": "ChatMessage",
+       "description": "A message in the live chat.",
+       "type": "object",
+       "properties": {
+         "userId": { "type": "string" },
+         "userName": { "type": "string" },
+         "text": { "type": "string" },
+         "type": { "type": "string", "enum": ["artist", "fan"] },
+         "timestamp": { "type": "string", "format": "date-time" }
+       },
+       "required": ["userId", "userName", "text", "type", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": { "schema": "User", "description": "User profiles." },
+    "projects/{projectId}": { "schema": "Project", "description": "Studio projects." },
+    "projects/{projectId}/takes/{takeId}": { "schema": "Take", "description": "Recording takes for a project." },
+    "marketplace/{itemId}": { "schema": "MarketplaceItem", "description": "Marketplace items." },
+    "merch/{merchId}": { "schema": "MerchItem", "description": "Merch items." },
+    "collabSessions/{sessionId}": { "schema": "CollabSession", "description": "Active collaboration sessions." },
+    "collabRequests/{requestId}": { "schema": "CollabRequest", "description": "Open collaboration requests." },
+    "liveChats/{chatId}": { "schema": "ChatMessage", "description": "Messages for the live stream." }
+  }
+}

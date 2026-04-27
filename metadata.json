@@ -1,0 +1,14 @@
+{
+  "name": "Beatnest",
+  "description": "Revolutionary social music platform featuring AI voice generation, professional recording studio, artist collaboration, beat marketplace, live streaming, and robust artist analytics.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "AI Voice Generation",
+    "Real-time Collaboration",
+    "Music Marketplace",
+    "Artist Analytics"
+  ]
+}
